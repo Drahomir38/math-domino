@@ -34,28 +34,33 @@ function generateTiles(operations) {
     }
   }
 
+  // Collect all distinct result values, sorted
+  const vals = Object.keys(byResult).map(Number).sort((a, b) => a - b);
+
+  // Build tiles like real domino: every combination of (valA, valB) where valA <= valB
+  // For each pair, pick one random expression per result value
+  // This gives tiles where left.value and right.value are usually DIFFERENT
   const tiles = [];
   let id = 0;
 
-  // Same-result pairs: both sides have equations with equal answers
-  for (const val of Object.keys(byResult)) {
-    const group = shuffle([...byResult[val]]);
-    for (let i = 0; i + 1 < group.length; i += 2) {
-      tiles.push({ id: id++, left: group[i], right: group[i + 1] });
-    }
-  }
+  for (let i = 0; i < vals.length; i++) {
+    for (let j = i; j < vals.length; j++) {
+      const lPool = byResult[vals[i]];
+      const rPool = byResult[vals[j]];
+      if (!lPool?.length || !rPool?.length) continue;
 
-  // Cross-value tiles: left.value !== right.value (adds variety and replayability)
-  const vals = Object.keys(byResult).map(Number);
-  for (let i = 0; i < vals.length - 1; i += 2) {
-    const lPool = byResult[vals[i]];
-    const rPool = byResult[vals[i + 1]];
-    if (lPool.length && rPool.length) {
-      tiles.push({
-        id: id++,
-        left: lPool[Math.floor(Math.random() * lPool.length)],
-        right: rPool[Math.floor(Math.random() * rPool.length)],
-      });
+      // Pick a random expression for each side
+      const leftExpr  = lPool[Math.floor(Math.random() * lPool.length)];
+      // For same-value doubles (i === j) pick two DIFFERENT expressions if possible
+      let rightExpr;
+      if (i === j && rPool.length > 1) {
+        const others = rPool.filter(e => e.expr !== leftExpr.expr);
+        rightExpr = others[Math.floor(Math.random() * others.length)];
+      } else {
+        rightExpr = rPool[Math.floor(Math.random() * rPool.length)];
+      }
+
+      tiles.push({ id: id++, left: leftExpr, right: rightExpr });
     }
   }
 
