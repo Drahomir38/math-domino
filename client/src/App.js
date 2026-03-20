@@ -9,7 +9,7 @@ function App() {
   const [screen, setScreen] = useState('lobby'); // lobby | game | gameover
   const [roomId, setRoomId] = useState('');
   const [playerId, setPlayerId] = useState(null);
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(''); // eslint-disable-line no-unused-vars
   const [isHost, setIsHost] = useState(false);
   const [players, setPlayers] = useState([]);
   const [settings, setSettings] = useState({ operations: ['+'], mode: 'easy' });
