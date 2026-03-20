@@ -1,0 +1,16 @@
+{
+  "name": "math-domino",
+  "version": "1.0.0",
+  "description": "Math Match Domino - online multiplayer game for kids",
+  "scripts": {
+    "install-all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm start --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "NODE_ENV=production node server/index.js",
+    "postinstall": "npm install --prefix server && npm install --prefix client && npm run build --prefix client"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

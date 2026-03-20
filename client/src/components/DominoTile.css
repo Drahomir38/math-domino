@@ -1,0 +1,94 @@
+.domino-tile {
+  display: inline-flex;
+  align-items: stretch;
+  background: #ffd6e7;
+  border: 2.5px solid #e89ec0;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+  overflow: hidden;
+  user-select: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  min-width: 80px;
+  height: 48px;
+}
+
+.domino-tile.domino-small {
+  min-width: 64px;
+  height: 38px;
+  border-radius: 8px;
+  border-width: 2px;
+}
+
+.domino-tile.domino-clickable {
+  cursor: pointer;
+}
+
+.domino-tile.domino-clickable:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+.domino-tile.domino-selected {
+  border-color: #ff6b9d;
+  background: #ffe0ed;
+  box-shadow: 0 0 0 3px rgba(255,107,157,0.35), 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-4px);
+}
+
+.domino-tile.domino-highlight {
+  border-color: #6bcb77;
+  box-shadow: 0 0 0 3px rgba(107,203,119,0.4);
+  animation: pulse-green 1.2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(107,203,119,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(107,203,119,0.2); }
+}
+
+.domino-tile.domino-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.domino-half {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+}
+
+.domino-half span {
+  font-size: 13px;
+  font-weight: 900;
+  color: #444;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.domino-tile.domino-small .domino-half span {
+  font-size: 11px;
+}
+
+.domino-divider {
+  width: 2.5px;
+  background: #e89ec0;
+  align-self: stretch;
+}
+
+.domino-tile.domino-small .domino-divider {
+  width: 2px;
+}
+
+/* Responsive - on small screens, hand tiles are slightly smaller */
+@media (max-width: 480px) {
+  .domino-tile {
+    min-width: 68px;
+    height: 42px;
+  }
+  .domino-half span {
+    font-size: 11px;
+  }
+}
