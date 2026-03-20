@@ -3,19 +3,16 @@
 // =============================================
 
 /**
- * Generate all math domino tiles based on settings.
- * Each tile: { id, left: {expr, value}, right: {expr, value} }
- *
- * Modes:
- *  - "easy":   one side = equation, other side = plain number (answer)
- *  - "hard":   both sides = equations (matched by equal results)
+ * Generate math domino tiles — BOTH sides are always equations.
+ * Matching rule: the result of the touching equation must be equal.
+ * e.g. tile A right "3+4=7" touches tile B left "2+5=7" → match!
+ * Players must calculate themselves — no hints in UI.
  */
-function generateTiles(operations, mode) {
+function generateTiles(operations) {
   const ops = operations && operations.length > 0 ? operations : ['+'];
-  const results = new Set();
-  const expressions = [];
 
-  // Build a pool of expressions for each result 0-18
+  // Build pool of unique expressions grouped by result value
+  const byResult = {};
   for (let a = 0; a <= 9; a++) {
     for (let b = 0; b <= 9; b++) {
       for (const op of ops) {
@@ -28,8 +25,11 @@ function generateTiles(operations, mode) {
           result = a / b;
         }
         if (result === undefined || result < 0 || result > 81) continue;
-        expressions.push({ expr: `${a}${opSymbol(op)}${b}`, value: result });
-        results.add(result);
+        const expr = `${a}${opSymbol(op)}${b}`;
+        if (!byResult[result]) byResult[result] = [];
+        if (!byResult[result].find(e => e.expr === expr)) {
+          byResult[result].push({ expr, value: result });
+        }
       }
     }
   }
@@ -37,41 +37,25 @@ function generateTiles(operations, mode) {
   const tiles = [];
   let id = 0;
 
-  if (mode === 'easy') {
-    // left = equation, right = number (answer)
-    // Pick unique equations (remove duplicates by expr)
-    const unique = dedup(expressions);
-    // Shuffle and take up to 56 tiles
-    const shuffled = shuffle([...unique]);
-    const pool = shuffled.slice(0, 56);
-    for (const exprObj of pool) {
+  // Same-result pairs: both sides have equations with equal answers
+  for (const val of Object.keys(byResult)) {
+    const group = shuffle([...byResult[val]]);
+    for (let i = 0; i + 1 < group.length; i += 2) {
+      tiles.push({ id: id++, left: group[i], right: group[i + 1] });
+    }
+  }
+
+  // Cross-value tiles: left.value !== right.value (adds variety and replayability)
+  const vals = Object.keys(byResult).map(Number);
+  for (let i = 0; i < vals.length - 1; i += 2) {
+    const lPool = byResult[vals[i]];
+    const rPool = byResult[vals[i + 1]];
+    if (lPool.length && rPool.length) {
       tiles.push({
         id: id++,
-        left: exprObj,
-        right: { expr: String(exprObj.value), value: exprObj.value },
+        left: lPool[Math.floor(Math.random() * lPool.length)],
+        right: rPool[Math.floor(Math.random() * rPool.length)],
       });
-    }
-  } else {
-    // hard: both sides = equations with equal results
-    // Group by result value
-    const byResult = {};
-    const unique = dedup(expressions);
-    for (const e of unique) {
-      if (!byResult[e.value]) byResult[e.value] = [];
-      byResult[e.value].push(e);
-    }
-    // Create pairs within same result group
-    for (const val of Object.keys(byResult)) {
-      const group = shuffle([...byResult[val]]);
-      for (let i = 0; i + 1 < group.length; i += 2) {
-        tiles.push({
-          id: id++,
-          left: group[i],
-          right: group[i + 1],
-        });
-        if (tiles.length >= 60) break;
-      }
-      if (tiles.length >= 60) break;
     }
   }
 
@@ -84,15 +68,6 @@ function opSymbol(op) {
   return op;
 }
 
-function dedup(arr) {
-  const seen = new Set();
-  return arr.filter(e => {
-    if (seen.has(e.expr)) return false;
-    seen.add(e.expr);
-    return true;
-  });
-}
-
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -103,210 +78,148 @@ function shuffle(arr) {
 }
 
 /**
- * Check if a tile can be placed at a given end of the chain.
- * end: 'left' | 'right'  (which end of the board chain we're attaching to)
- * boardEndValue: the value exposed at that end
- * tile: the tile being placed
- * flipped: whether the tile is being placed flipped (right becomes left)
- *
- * Returns: { canPlace: bool, flipped: bool }
- */
-function canPlaceTile(boardEndValue, tile) {
-  if (tile.left.value === boardEndValue) return { canPlace: true, flipped: false };
-  if (tile.right.value === boardEndValue) return { canPlace: true, flipped: true };
-  return { canPlace: false, flipped: false };
-}
-
-/**
  * Create a new game state
  */
 function createGame(roomId, players, settings) {
-  const { operations, mode } = settings;
-  const allTiles = generateTiles(operations, mode);
+  const allTiles = generateTiles(settings.operations);
 
   // Deal 10 tiles to each player
   const hands = {};
-  let tileIndex = 0;
-  for (const player of players) {
-    hands[player.id] = allTiles.slice(tileIndex, tileIndex + 10);
-    tileIndex += 10;
+  let idx = 0;
+  for (const p of players) {
+    hands[p.id] = allTiles.slice(idx, idx + 10);
+    idx += 10;
   }
-  const drawPile = allTiles.slice(tileIndex);
 
-  // Find the first tile to place: tile with highest single value or double
-  // Or just use first tile from first player for simplicity
-  // Actually: first player places first tile from their hand
-  const firstPlayerId = players[0].id;
-  const firstTile = hands[firstPlayerId][0];
-  hands[firstPlayerId] = hands[firstPlayerId].slice(1);
+  // Starting tile placed on the table (random, not from any hand)
+  const startTile = allTiles[idx] || allTiles[0];
+  const chain = [{ ...startTile, flipped: false }];
 
-  const chain = [{ ...firstTile, flipped: false }];
+  // Tiles placed counter per player
+  const tilesPlaced = {};
+  for (const p of players) tilesPlaced[p.id] = 0;
 
   return {
     roomId,
     players,
     hands,
-    drawPile,
     chain,
-    // leftEnd and rightEnd are the VALUES exposed at each end
-    leftEnd: firstTile.left.value,
-    rightEnd: firstTile.right.value,
-    currentPlayerIndex: 1 % players.length,
-    phase: 'playing', // 'playing' | 'finished'
+    leftEnd: startTile.left.value,
+    rightEnd: startTile.right.value,
+    currentPlayerIndex: 0,
+    phase: 'playing',
     winner: null,
     settings,
-    passCount: 0, // consecutive passes
+    tilesPlaced,
+    consecutivePasses: 0,
   };
 }
 
 /**
- * Place a tile on the board.
- * Returns { success, state, message }
+ * Place a tile. Returns { success, state, message }
  */
 function placeTile(state, playerId, tileId, end, flipped) {
   if (state.phase !== 'playing') return { success: false, message: 'Hra již skončila.' };
-  const currentPlayer = state.players[state.currentPlayerIndex];
-  if (currentPlayer.id !== playerId) return { success: false, message: 'Nejsi na tahu.' };
+  const cur = state.players[state.currentPlayerIndex];
+  if (cur.id !== playerId) return { success: false, message: 'Nejsi na tahu.' };
 
   const hand = state.hands[playerId];
-  const tileIndex = hand.findIndex(t => t.id === tileId);
-  if (tileIndex === -1) return { success: false, message: 'Kostičku nemáš v ruce.' };
+  const tileIdx = hand.findIndex(t => t.id === tileId);
+  if (tileIdx === -1) return { success: false, message: 'Kostičku nemáš v ruce.' };
 
-  const tile = hand[tileIndex];
-  const boardEndValue = end === 'left' ? state.leftEnd : state.rightEnd;
+  const tile = hand[tileIdx];
+  const boardEnd = end === 'left' ? state.leftEnd : state.rightEnd;
 
-  // Determine orientation
-  let placedFlipped = flipped;
-  // Check if placement is valid
-  const checkVal = placedFlipped ? tile.right.value : tile.left.value;
-  const attachVal = placedFlipped ? tile.left.value : tile.right.value;
+  // The touching side must equal boardEnd
+  const touchingVal = flipped ? tile.right.value : tile.left.value;
+  const newEndVal   = flipped ? tile.left.value  : tile.right.value;
 
-  if (checkVal !== boardEndValue) {
-    return { success: false, message: `Kostička nepasuje. Potřebuješ ${boardEndValue}.` };
+  if (touchingVal !== boardEnd) {
+    return { success: false, message: `Výsledek musí být ${boardEnd}.` };
   }
 
-  // Remove from hand
-  const newHand = [...hand];
-  newHand.splice(tileIndex, 1);
-
-  // Add to chain
+  const newHand = hand.filter((_, i) => i !== tileIdx);
   const newChain = [...state.chain];
-  const chainTile = { ...tile, flipped: placedFlipped };
-
-  let newLeftEnd = state.leftEnd;
-  let newRightEnd = state.rightEnd;
-
-  if (end === 'left') {
-    newChain.unshift(chainTile);
-    newLeftEnd = attachVal;
-  } else {
-    newChain.push(chainTile);
-    newRightEnd = attachVal;
-  }
+  if (end === 'left') newChain.unshift({ ...tile, flipped });
+  else newChain.push({ ...tile, flipped });
 
   const newHands = { ...state.hands, [playerId]: newHand };
+  const newTilesPlaced = { ...state.tilesPlaced, [playerId]: state.tilesPlaced[playerId] + 1 };
 
-  // Check win condition
+  const allEmpty = Object.values(newHands).every(h => h.length === 0);
+  const nextIdx = (state.currentPlayerIndex + 1) % state.players.length;
+
   let phase = state.phase;
   let winner = state.winner;
-  if (newHand.length === 0) {
+  if (allEmpty) {
     phase = 'finished';
-    winner = playerId;
+    winner = getMostTilesPlayer(state.players, newTilesPlaced);
   }
 
-  const nextPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
-
-  const newState = {
-    ...state,
-    hands: newHands,
-    chain: newChain,
-    leftEnd: newLeftEnd,
-    rightEnd: newRightEnd,
-    currentPlayerIndex: nextPlayerIndex,
-    phase,
-    winner,
-    passCount: 0,
-  };
-
-  return { success: true, state: newState };
-}
-
-/**
- * Draw a tile from the pile (when player cannot play)
- */
-function drawTile(state, playerId) {
-  if (state.phase !== 'playing') return { success: false, message: 'Hra již skončila.' };
-  const currentPlayer = state.players[state.currentPlayerIndex];
-  if (currentPlayer.id !== playerId) return { success: false, message: 'Nejsi na tahu.' };
-
-  if (state.drawPile.length === 0) {
-    // Pass turn
-    const newPassCount = state.passCount + 1;
-    if (newPassCount >= state.players.length) {
-      // All players passed - game ends, player with fewest tiles wins
-      let minTiles = Infinity;
-      let winnerId = null;
-      for (const p of state.players) {
-        const count = state.hands[p.id].length;
-        if (count < minTiles) {
-          minTiles = count;
-          winnerId = p.id;
-        }
-      }
-      return {
-        success: true,
-        state: {
-          ...state,
-          phase: 'finished',
-          winner: winnerId,
-          passCount: newPassCount,
-          currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
-        },
-        drew: null,
-        message: 'Balíček je prázdný. Přeskočeno.',
-      };
-    }
-    return {
-      success: true,
-      state: {
-        ...state,
-        passCount: newPassCount,
-        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
-      },
-      drew: null,
-      message: 'Balíček je prázdný. Přeskočeno.',
-    };
-  }
-
-  const newDrawPile = [...state.drawPile];
-  const drawnTile = newDrawPile.pop();
-  const newHand = [...state.hands[playerId], drawnTile];
-  const newHands = { ...state.hands, [playerId]: newHand };
-
-  // After drawing, it's still the same player's turn (they must try to play)
   return {
     success: true,
     state: {
       ...state,
-      drawPile: newDrawPile,
       hands: newHands,
-      passCount: 0,
+      chain: newChain,
+      leftEnd: end === 'left' ? newEndVal : state.leftEnd,
+      rightEnd: end === 'right' ? newEndVal : state.rightEnd,
+      currentPlayerIndex: nextIdx,
+      phase,
+      winner,
+      tilesPlaced: newTilesPlaced,
+      consecutivePasses: 0,
     },
-    drew: drawnTile,
   };
 }
 
 /**
- * Check if a player has any valid move
+ * Pass turn — used when player has no valid move.
+ * When all players pass consecutively → game ends.
  */
+function passTurn(state, playerId) {
+  if (state.phase !== 'playing') return { success: false, message: 'Hra již skončila.' };
+  const cur = state.players[state.currentPlayerIndex];
+  if (cur.id !== playerId) return { success: false, message: 'Nejsi na tahu.' };
+
+  const newPasses = state.consecutivePasses + 1;
+  const nextIdx = (state.currentPlayerIndex + 1) % state.players.length;
+
+  if (newPasses >= state.players.length) {
+    return {
+      success: true,
+      state: {
+        ...state,
+        phase: 'finished',
+        winner: getMostTilesPlayer(state.players, state.tilesPlaced),
+        consecutivePasses: newPasses,
+        currentPlayerIndex: nextIdx,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    state: { ...state, consecutivePasses: newPasses, currentPlayerIndex: nextIdx },
+  };
+}
+
+function getMostTilesPlayer(players, tilesPlaced) {
+  return players.reduce((best, p) =>
+    tilesPlaced[p.id] > tilesPlaced[best] ? p.id : best,
+    players[0].id
+  );
+}
+
 function hasValidMove(state, playerId) {
   const hand = state.hands[playerId];
   for (const tile of hand) {
-    const left = canPlaceTile(state.leftEnd, tile);
-    const right = canPlaceTile(state.rightEnd, tile);
-    if (left.canPlace || right.canPlace) return true;
+    if (
+      tile.left.value === state.leftEnd || tile.right.value === state.leftEnd ||
+      tile.left.value === state.rightEnd || tile.right.value === state.rightEnd
+    ) return true;
   }
   return false;
 }
 
-module.exports = { generateTiles, createGame, placeTile, drawTile, hasValidMove, canPlaceTile };
+module.exports = { generateTiles, createGame, placeTile, passTurn, hasValidMove };

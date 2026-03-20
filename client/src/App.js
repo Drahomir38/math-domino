@@ -12,7 +12,7 @@ function App() {
   const [playerName, setPlayerName] = useState(''); // eslint-disable-line no-unused-vars
   const [isHost, setIsHost] = useState(false);
   const [players, setPlayers] = useState([]);
-  const [settings, setSettings] = useState({ operations: ['+'], mode: 'easy' });
+  const [settings, setSettings] = useState({ operations: ['+'] });
   const [hand, setHand] = useState([]);
   const [publicState, setPublicState] = useState(null);
   const [gameOverData, setGameOverData] = useState(null);
@@ -127,8 +127,8 @@ function App() {
     });
   }, [roomId, showNotification]);
 
-  const drawTile = useCallback(() => {
-    socket.emit('drawTile', { roomId }, (res) => {
+  const passTurn = useCallback(() => {
+    socket.emit('passTurn', { roomId }, (res) => {
       if (res.error) showNotification(res.error);
     });
   }, [roomId, showNotification]);
@@ -164,7 +164,7 @@ function App() {
           playerId={playerId}
           isMyTurn={publicState.currentPlayerId === playerId}
           onPlaceTile={placeTile}
-          onDrawTile={drawTile}
+          onPassTurn={passTurn}
         />
       )}
 

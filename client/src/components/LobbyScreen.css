@@ -221,6 +221,14 @@
   margin-bottom: 10px;
 }
 
+.settings-note {
+  font-size: 13px;
+  color: #888;
+  font-weight: 600;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
 .op-buttons {
   display: flex;
   flex-wrap: wrap;

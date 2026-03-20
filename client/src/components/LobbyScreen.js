@@ -19,12 +19,8 @@ export default function LobbyScreen({ players, isHost, settings, error, onJoin, 
     const ops = settings.operations.includes(op)
       ? settings.operations.filter(o => o !== op)
       : [...settings.operations, op];
-    if (ops.length === 0) return; // at least one
+    if (ops.length === 0) return;
     onUpdateSettings({ ...settings, operations: ops });
-  };
-
-  const setMode = (mode) => {
-    onUpdateSettings({ ...settings, mode });
   };
 
   const ops = [
@@ -98,46 +94,19 @@ export default function LobbyScreen({ players, isHost, settings, error, onJoin, 
 
             {isHost && (
               <div className="settings-panel">
-                <h3>⚙️ Nastavení hry</h3>
-
-                <div className="settings-group">
-                  <label>Znaménka</label>
-                  <div className="op-buttons">
-                    {ops.map(op => (
-                      <button
-                        key={op.key}
-                        className={`op-btn ${settings.operations.includes(op.key) ? 'active' : ''}`}
-                        onClick={() => toggleOp(op.key)}
-                        type="button"
-                      >
-                        {op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="settings-group">
-                  <label>Obtížnost</label>
-                  <div className="mode-buttons">
+                <h3>⚙️ Znaménka v příkladech</h3>
+                <p className="settings-note">Každá kostička má na obou stranách příklad. Musíš spočítat výsledky a najít kam kostička pasuje.</p>
+                <div className="op-buttons">
+                  {ops.map(op => (
                     <button
-                      className={`mode-btn ${settings.mode === 'easy' ? 'active' : ''}`}
-                      onClick={() => setMode('easy')}
+                      key={op.key}
+                      className={`op-btn ${settings.operations.includes(op.key) ? 'active' : ''}`}
+                      onClick={() => toggleOp(op.key)}
                       type="button"
                     >
-                      <span className="mode-icon">⭐</span>
-                      <span className="mode-title">Lehká</span>
-                      <span className="mode-desc">Příklad = Číslo</span>
+                      {op.label}
                     </button>
-                    <button
-                      className={`mode-btn ${settings.mode === 'hard' ? 'active' : ''}`}
-                      onClick={() => setMode('hard')}
-                      type="button"
-                    >
-                      <span className="mode-icon">🌟</span>
-                      <span className="mode-title">Těžká</span>
-                      <span className="mode-desc">Příklad = Příklad</span>
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -146,7 +115,6 @@ export default function LobbyScreen({ players, isHost, settings, error, onJoin, 
               <div className="settings-view">
                 <h3>⚙️ Nastavení hry</h3>
                 <p>Znaménka: <strong>{settings.operations.join(', ')}</strong></p>
-                <p>Obtížnost: <strong>{settings.mode === 'easy' ? 'Lehká (příklad = číslo)' : 'Těžká (příklad = příklad)'}</strong></p>
               </div>
             )}
 

@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-const { createGame, placeTile, drawTile, hasValidMove } = require('./gameLogic');
+const { createGame, placeTile, passTurn, hasValidMove } = require('./gameLogic');
 
 const app = express();
 const server = http.createServer(app);
@@ -46,8 +46,8 @@ function getRoomPublicState(room) {
     currentPlayerId: gs.players[gs.currentPlayerIndex]?.id,
     phase: gs.phase,
     winner: gs.winner,
-    drawPileCount: gs.drawPile.length,
     handCounts,
+    tilesPlaced: gs.tilesPlaced,
     settings: gs.settings,
   };
 }
@@ -68,7 +68,7 @@ io.on('connection', (socket) => {
         id: roomId,
         players: [],
         gameState: null,
-        settings: { operations: ['+'], mode: 'easy' },
+        settings: { operations: ['+'] },
         host: null,
       };
       rooms[roomId] = room;
@@ -173,29 +173,29 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- Draw tile ---
-  socket.on('drawTile', ({ roomId }, cb) => {
+  // --- Pass turn ---
+  socket.on('passTurn', ({ roomId }, cb) => {
     const room = rooms[roomId];
     if (!room || !room.gameState) { cb({ error: 'Hra neexistuje.' }); return; }
 
-    const result = drawTile(room.gameState, socket.id);
+    const result = passTurn(room.gameState, socket.id);
     if (!result.success) { cb({ error: result.message }); return; }
 
     room.gameState = result.state;
     const publicState = getRoomPublicState(room);
 
     io.to(roomId).emit('boardUpdate', { publicState });
-    io.to(socket.id).emit('handUpdate', { hand: room.gameState.hands[socket.id] });
+    io.to(roomId).emit('notification', { message: `${room.players.find(p => p.id === socket.id)?.name} přeskočil/a tah.` });
 
-    if (result.message) {
-      io.to(socket.id).emit('notification', { message: result.message });
-    }
-
-    cb({ success: true, drew: result.drew });
+    cb({ success: true });
 
     if (result.state.phase === 'finished') {
       const winner = room.players.find(p => p.id === result.state.winner);
-      io.to(roomId).emit('gameOver', { winnerId: result.state.winner, winnerName: winner?.name });
+      io.to(roomId).emit('gameOver', {
+        winnerId: result.state.winner,
+        winnerName: winner?.name,
+        tilesPlaced: result.state.tilesPlaced,
+      });
     }
   });
 

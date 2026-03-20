@@ -52,36 +52,25 @@
   50% { opacity: 0.3; }
 }
 
-.ps-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ps-tiles {
-  font-size: 13px;
-  font-weight: 800;
-  color: #888;
-}
-
-.pile-count {
+.ps-info {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  overflow: hidden;
 }
 
-.pile-num {
-  font-size: 20px;
-  font-weight: 900;
-  color: #666;
-  line-height: 1;
+.ps-name {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-stats {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  white-space: nowrap;
 }
 
 /* ---- Turn banner ---- */
@@ -240,13 +229,17 @@
   box-shadow: 0 3px 10px rgba(199,125,255,0.4);
 }
 
-.btn-draw {
-  background: linear-gradient(135deg, #6bcbff, #339af0);
+.btn-pass {
+  background: linear-gradient(135deg, #aaa, #888);
   color: white;
   padding: 10px 20px;
   border-radius: 12px;
   font-size: 15px;
-  box-shadow: 0 3px 10px rgba(107,203,255,0.4);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+.btn-pass:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 
 /* Instruction tip */

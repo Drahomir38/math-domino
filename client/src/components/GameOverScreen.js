@@ -6,8 +6,15 @@ const PLAYER_COLORS = ['#ff6b9d', '#6bcbff', '#ffd93d'];
 export default function GameOverScreen({ data, players, playerId, isHost, onRestart }) {
   if (!data) return null;
 
-  const { winnerId, winnerName } = data;
+  const { winnerId, winnerName, tilesPlaced } = data;
   const iWon = winnerId === playerId;
+
+  // Sort players by tiles placed descending for scoreboard
+  const sorted = [...players].sort((a, b) =>
+    (tilesPlaced?.[b.id] ?? 0) - (tilesPlaced?.[a.id] ?? 0)
+  );
+
+  const medals = ['🥇', '🥈', '🥉'];
 
   return (
     <div className="gameover-screen">
@@ -19,19 +26,24 @@ export default function GameOverScreen({ data, players, playerId, isHost, onRest
         <p className="gameover-winner">
           {iWon ? 'Ty jsi vyhrál/a! 🎉' : `Vyhrál/a ${winnerName}! 🎉`}
         </p>
+        <p className="gameover-rule">Vyhrává ten, kdo položil nejvíce kostiček.</p>
 
         <div className="gameover-players">
-          {players.map((p, i) => (
-            <div
-              key={p.id}
-              className={`go-player ${p.id === winnerId ? 'winner' : ''}`}
-              style={{ borderColor: PLAYER_COLORS[i] }}
-            >
-              <span style={{ color: PLAYER_COLORS[i] }}>{p.id === winnerId ? '🥇' : '🥈'}</span>
-              <span>{p.name}</span>
-              {p.id === playerId && <span className="you-tag">ty</span>}
-            </div>
-          ))}
+          {sorted.map((p, rank) => {
+            const origIdx = players.findIndex(pl => pl.id === p.id);
+            return (
+              <div
+                key={p.id}
+                className={`go-player ${p.id === winnerId ? 'winner' : ''}`}
+                style={{ borderColor: PLAYER_COLORS[origIdx] }}
+              >
+                <span className="go-medal">{medals[rank] || '·'}</span>
+                <span className="go-name">{p.name}</span>
+                <span className="go-score">{tilesPlaced?.[p.id] ?? 0} kostiček</span>
+                {p.id === playerId && <span className="you-tag">ty</span>}
+              </div>
+            );
+          })}
         </div>
 
         {isHost ? (
